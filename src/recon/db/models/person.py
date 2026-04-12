@@ -1,5 +1,10 @@
+from typing import Any
+
 from sqlalchemy import Boolean, Column, Date, Integer, String
 from datetime import date
+
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm.relationships import _RelationshipDeclared
 
 from .base import Base
 
@@ -44,3 +49,6 @@ class Person(Base):
     children_names: Column[str] = Column(String, nullable=True)
     # Description
     description: Column[str] = Column(String, nullable=True)
+
+    personal_situation_outbreak: _RelationshipDeclared[Any] = relationship("PersonalSituationOutbreak1939", back_populates="person", uselist=False)
+    deportations_and_repressions: _RelationshipDeclared[Any] = relationship("DeportationAndRepression", back_populates="person")
