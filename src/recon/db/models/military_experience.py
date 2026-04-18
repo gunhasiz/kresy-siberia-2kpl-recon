@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy import Column, Integer, String, Date, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.relationships import _RelationshipDeclared
+
 from .base import Base
 
 

@@ -3,8 +3,8 @@ from typing import Any
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.relationships import _RelationshipDeclared
-from .base import Base
 
+from .base import Base
 
 class Sources(Base):
     __tablename__: str = "sources"
@@ -14,11 +14,11 @@ class Sources(Base):
         Integer, ForeignKey("persons.id"), nullable=False)
 
     # A brief summary or description of the source
-    summary = Column(String, nullable=True)
+    summary: Column[str] = Column(String, nullable=True)
     # URL or reference to the source in string form
-    url_text = Column(String, nullable=True)
+    url_text: Column[str] = Column(String, nullable=True)
     # URL or reference to the source
-    url = Column(String, nullable=True)
+    url: Column[str] = Column(String, nullable=True)
 
     person: _RelationshipDeclared[Any] = relationship(
         "Person", back_populates="sources")

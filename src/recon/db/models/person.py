@@ -1,8 +1,7 @@
 from typing import Any
-
-from sqlalchemy import Boolean, Column, Date, Integer, String
 from datetime import date
 
+from sqlalchemy import Boolean, Column, Date, Integer, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.relationships import _RelationshipDeclared
 
