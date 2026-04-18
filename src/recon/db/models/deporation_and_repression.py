@@ -16,7 +16,7 @@ class DeportationAndRepression(Base):
     # Other information about deportation or repression
     other_information: Column[str] = Column(Text)
 
-    place: _RelationshipDeclared[Any] = relationship("Places")
+    place: _RelationshipDeclared[Any] = relationship("Places", back_populates="deportations_and_repressions")
     person: _RelationshipDeclared[Any] = relationship("Person", back_populates="deportations_and_repressions")
 
 class Places(Base):
