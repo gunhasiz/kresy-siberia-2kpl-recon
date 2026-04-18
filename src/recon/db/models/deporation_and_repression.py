@@ -25,9 +25,9 @@ class Places(Base):
     id: Column[int] = Column(Integer, primary_key=True)
 
     # When deportation or repression took place
-    fromWhenDate: Column[date] = Column(Date, nullable=True)
+    from_when_date: Column[date] = Column(Date, nullable=True)
     # When deportation or repression ended (if applicable)
-    toWhenDate: Column[date] = Column(Date, nullable=True)
+    to_when_date: Column[date] = Column(Date, nullable=True)
     # Authority or institution that ordered or carried out the deportation or repression
     deporting_authority: Column[str] = Column(String, nullable=True)
     # Location of deportation or repression
