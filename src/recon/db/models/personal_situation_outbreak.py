@@ -5,11 +5,11 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm.relationships import _RelationshipDeclared
 from .base import Base
 
-class PersonalSituationOutbreak1939(Base):
-    __tablename__: str = "personal_situation_outbreaks_1939"
+class PersonalSituationOutbreakOfWWII(Base):
+    __tablename__: str = "personal_situation_outbreaks_of_wwii"
 
     id: Column[int] = Column(Integer, primary_key=True)
-    person_id: Column[int] = Column(Integer, ForeignKey("people.id"), nullable=False)
+    person_id: Column[int] = Column(Integer, ForeignKey("persons.id"), nullable=False)
     
     # Residence at the outbreak of WWII
     residence: Column[str] = Column(String, nullable=True)
