@@ -5,9 +5,9 @@ from sqlalchemy import Column, Integer, String, Date, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.relationships import _RelationshipDeclared
 
-from .base import Base
+from .base import BaseDTO
 
-class Repatriation(Base):
+class RepatriationDTO(BaseDTO):
     __tablename__: str = "repatriations"
 
     id: Column[int] = Column(Integer, primary_key=True)
@@ -24,4 +24,4 @@ class Repatriation(Base):
     # Nearest large city to place of return to Poland
     nearest_large_city: Column[str] = Column(String, nullable=True)
 
-    person: _RelationshipDeclared[Any] = relationship("Person", back_populates="repatriations")
+    person: _RelationshipDeclared[Any] = relationship("PersonDTO", back_populates="repatriations")

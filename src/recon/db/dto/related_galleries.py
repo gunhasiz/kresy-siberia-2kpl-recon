@@ -4,9 +4,9 @@ from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.relationships import _RelationshipDeclared
 
-from .base import Base
+from .base import BaseDTO
 
-class RelatedGalleries(Base):
+class RelatedGalleriesDTO(BaseDTO):
     __tablename__: str = "related_galleries"
     
     id: Column[int] = Column(Integer, primary_key=True)
@@ -21,4 +21,4 @@ class RelatedGalleries(Base):
     url = Column(String, nullable=True)
 
     person: _RelationshipDeclared[Any] = relationship(
-        "Person", back_populates="related_galleries")
+        "PersonDTO", back_populates="related_galleries")

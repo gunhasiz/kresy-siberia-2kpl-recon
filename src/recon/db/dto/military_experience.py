@@ -5,10 +5,10 @@ from sqlalchemy import Column, Integer, String, Date, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.relationships import _RelationshipDeclared
 
-from .base import Base
+from .base import BaseDTO
 
 
-class MilitaryExperience(Base):
+class MilitaryExperienceDTO(BaseDTO):
     __tablename__: str = "military_experiences"
 
     id: Column[int] = Column(Integer, primary_key=True)
@@ -25,12 +25,12 @@ class MilitaryExperience(Base):
     other_battles: Column[str] = Column(String, nullable=True)
 
     military_services: _RelationshipDeclared[Any] = relationship(
-        "MilitaryService", back_populates="military_experience")
+        "MilitaryServiceDTO", back_populates="military_experience")
     person: _RelationshipDeclared[Any] = relationship(
-        "Person", back_populates="military_experiences")
+        "PersonDTO", back_populates="military_experiences")
 
 
-class MilitaryService(Base):
+class MilitaryServiceDTO(BaseDTO):
     __tablename__: str = "military_services"
 
     id: Column[int] = Column(Integer, primary_key=True)

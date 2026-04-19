@@ -4,9 +4,9 @@ from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.relationships import _RelationshipDeclared
 
-from .base import Base
+from .base import BaseDTO
 
-class PersonalSituationOutbreakOfWWII(Base):
+class PersonalSituationOutbreakOfWWIIDTO(BaseDTO):
     __tablename__: str = "personal_situation_outbreaks_of_wwii"
 
     id: Column[int] = Column(Integer, primary_key=True)
@@ -29,4 +29,4 @@ class PersonalSituationOutbreakOfWWII(Base):
     # Military Rank at the outbreak of WWII
     military_rank: Column[str] = Column(String, nullable=True)
 
-    person: _RelationshipDeclared[Any] = relationship("Person", back_populates="initial_status")
+    person: _RelationshipDeclared[Any] = relationship("PersonDTO", back_populates="initial_status")

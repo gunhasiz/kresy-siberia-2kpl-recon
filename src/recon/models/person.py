@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import date
 
-class PersonDTO(BaseModel):
+class Person(BaseModel):
     external_entry_id: int
     full_name: str
     maiden_name: Optional[str] = None

@@ -4,9 +4,9 @@ from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.relationships import _RelationshipDeclared
 
-from .base import Base
+from .base import BaseDTO
 
-class OccupationPeriod(Base):
+class OccupationPeriodDTO(BaseDTO):
     __tablename__: str = "occupation_periods"
 
     id: Column[int] = Column(Integer, primary_key=True)
@@ -21,4 +21,4 @@ class OccupationPeriod(Base):
     # Nearest large city to place of residence during occupation period
     nearest_large_city: Column[str] = Column(String, nullable=True)
 
-    person: _RelationshipDeclared[Any] = relationship("Person", back_populates="occupation_periods")
+    person: _RelationshipDeclared[Any] = relationship("PersonDTO", back_populates="occupation_periods")

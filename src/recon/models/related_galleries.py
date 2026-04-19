@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
-class RelatedGalleryDTO(BaseModel):
+class RelatedGallery(BaseModel):
     summary: Optional[str] = None
     url_text: Optional[str] = None
     url: Optional[str] = None

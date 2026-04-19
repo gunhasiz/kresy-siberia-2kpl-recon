@@ -4,11 +4,12 @@ from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.relationships import _RelationshipDeclared
 
-from .base import Base
+from .base import BaseDTO
 
-class OtherMilitaryExperience(Base):
+
+class OtherMilitaryExperienceDTO(BaseDTO):
     __tablename__: str = "other_military_experiences"
-    
+
     id: Column[int] = Column(Integer, primary_key=True)
     person_id: Column[int] = Column(
         Integer, ForeignKey("persons.id"), nullable=False)
@@ -27,4 +28,4 @@ class OtherMilitaryExperience(Base):
     other_information: Column[str] = Column(String, nullable=True)
 
     person: _RelationshipDeclared[Any] = relationship(
-        "Person", back_populates="other_military_experiences")
+        "PersonDTO", back_populates="other_military_experiences")

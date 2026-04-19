@@ -5,22 +5,28 @@ from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.relationships import _RelationshipDeclared
 
-from .base import Base
+from .base import BaseDTO
 
-class DeportationAndRepression(Base):
+
+class DeportationAndRepressionDTO(BaseDTO):
     __tablename__: str = "deportations_and_repressions"
 
     id: Column[int] = Column(Integer, primary_key=True)
-    person_id: Column[int] = Column(Integer, ForeignKey("persons.id"), nullable=False)
-    place_id: Column[int] = Column(Integer, ForeignKey("places.id"), nullable=True)
+    person_id: Column[int] = Column(
+        Integer, ForeignKey("persons.id"), nullable=False)
+    place_id: Column[int] = Column(
+        Integer, ForeignKey("places.id"), nullable=True)
 
     # Other information about deportation or repression
     other_information: Column[str] = Column(Text)
 
-    place: _RelationshipDeclared[Any] = relationship("Places", back_populates="deportations_and_repressions")
-    person: _RelationshipDeclared[Any] = relationship("Person", back_populates="deportations_and_repressions")
+    place: _RelationshipDeclared[Any] = relationship(
+        "PlacesDTO", back_populates="deportations_and_repressions")
+    person: _RelationshipDeclared[Any] = relationship(
+        "PersonDTO", back_populates="deportations_and_repressions")
 
-class Places(Base):
+
+class PlacesDTO(BaseDTO):
     __tablename__: str = "places"
 
     id: Column[int] = Column(Integer, primary_key=True)

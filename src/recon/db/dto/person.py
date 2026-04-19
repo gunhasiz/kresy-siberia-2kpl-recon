@@ -5,9 +5,9 @@ from sqlalchemy import Boolean, Column, Date, Integer, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.relationships import _RelationshipDeclared
 
-from .base import Base
+from .base import BaseDTO
 
-class Person(Base):
+class PersonDTO(BaseDTO):
     __tablename__ = "persons"
     
     id: Column[int] = Column(Integer, primary_key=True)
@@ -49,5 +49,6 @@ class Person(Base):
     # Description
     description: Column[str] = Column(String, nullable=True)
 
+    # TODO
     personal_situation_outbreak: _RelationshipDeclared[Any] = relationship("PersonalSituationOutbreak1939", back_populates="person", uselist=False)
     deportations_and_repressions: _RelationshipDeclared[Any] = relationship("DeportationAndRepression", back_populates="person")

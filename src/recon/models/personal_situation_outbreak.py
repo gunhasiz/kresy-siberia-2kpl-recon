@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
-class PersonalSituationOutbreakDTO(BaseModel):
+class PersonalSituationOutbreak(BaseModel):
     residence: Optional[str] = None
     kresy_inhabitant_status: Optional[str] = None
     ethnicity: Optional[str] = None

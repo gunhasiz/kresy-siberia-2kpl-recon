@@ -4,9 +4,9 @@ from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.relationships import _RelationshipDeclared
 
-from .base import Base
+from .base import BaseDTO
 
-class Sources(Base):
+class SourcesDTO(BaseDTO):
     __tablename__: str = "sources"
     
     id: Column[int] = Column(Integer, primary_key=True)
@@ -21,4 +21,4 @@ class Sources(Base):
     url: Column[str] = Column(String, nullable=True)
 
     person: _RelationshipDeclared[Any] = relationship(
-        "Person", back_populates="sources")
+        "PersonDTO", back_populates="sources")
