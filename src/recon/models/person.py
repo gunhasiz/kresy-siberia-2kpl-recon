@@ -4,7 +4,7 @@ from datetime import date
 
 class Person(BaseModel):
     external_entry_id: int
-    full_name: str
+    full_name: Optional[str] = None
     maiden_name: Optional[str] = None
     nickname: Optional[str] = None
     gender: Optional[str] = None
