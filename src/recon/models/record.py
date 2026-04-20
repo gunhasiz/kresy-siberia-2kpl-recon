@@ -13,11 +13,11 @@ from recon.models.sources import Source
 from recon.models.related_galleries import RelatedGallery
 
 class Record(BaseModel):
-    person: Person = Person(external_entry_id=0)
+    person: Person = Person(external_entry_id="0")
     personal_situation_outbreak: PersonalSituationOutbreak = PersonalSituationOutbreak()
     deportation_and_repression: DeportationAndRepression = DeportationAndRepression()
     repatration: Repatriation = Repatriation()
-    occupation_perion: OccupationPeriod = OccupationPeriod()
+    occupation_period: OccupationPeriod = OccupationPeriod()
     military_experience: MilitaryExperience = MilitaryExperience()
     other_military_experience: OtherMilitaryExperience = OtherMilitaryExperience()
     sources: List[Source] = []

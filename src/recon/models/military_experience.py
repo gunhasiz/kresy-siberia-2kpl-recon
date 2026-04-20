@@ -3,13 +3,26 @@ from typing import Optional, List
 from datetime import date
 
 class MilitaryService(BaseModel):
-    service_branch: Optional[str] = None
+    served_in: Optional[str] = None
     unit_name: Optional[str] = None
     rank: Optional[str] = None
     from_when_date: Optional[date] = None
     to_when_date: Optional[date] = None
+    from_yyyy: Optional[str] = None
+    mm_first: Optional[str] = None
+    dd_first: Optional[str] = None
+    to_yyyy: Optional[str] = None
+    mm_last: Optional[str] = None
+    dd_last: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    # def model_post_init(self, __context):
+    #     if self.from_yyyy and self.mm_first and self.dd_first:
+    #         self.from_when_date = date(self.from_yyyy, self.mm_first, self.dd_first)
+
+    #     if self.to_yyyy and self.mm_last and self.dd_last:
+    #         self.to_when_date = date(self.to_yyyy, self.mm_last, self.dd_last)
 
 class MilitaryExperience(BaseModel):
     other_military_service: Optional[str] = None

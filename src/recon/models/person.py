@@ -3,15 +3,15 @@ from typing import Optional
 from datetime import date
 
 class Person(BaseModel):
-    external_entry_id: int
+    external_entry_id: str
     full_name: Optional[str] = None
     maiden_name: Optional[str] = None
     nickname: Optional[str] = None
     gender: Optional[str] = None
-    birth_date: Optional[date] = None
+    birth_date: Optional[str] = None
     birth_place: Optional[str] = None
-    died_in_ww2: bool = False
-    death_date: Optional[date] = None
+    died_in_ww2: Optional[str] = None
+    death_date: Optional[str] = None
     death_place: Optional[str] = None
     death_cause: Optional[str] = None
     father_name: Optional[str] = None

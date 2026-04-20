@@ -3,7 +3,7 @@ from typing import Optional
 from datetime import date
 
 class Repatriation(BaseModel):
-    return_date: Optional[date] = None
+    return_date: Optional[str] = None
     province: Optional[str] = None
     county: Optional[str] = None
     locality: Optional[str] = None
