@@ -1,12 +1,25 @@
 import asyncio
 from random import uniform
 from re import search
-from typing import List
+from typing import TypeVar, Type, List
+from pydantic import BaseModel
 from playwright.async_api import BrowserContext, Browser, Locator, Page, async_playwright
 
 import recon.helpers.constants as constants
 from recon.core.config import config
 from recon.models.status import Status
+from recon.models.record import Record
+from recon.models.person import Person
+from recon.models.personal_situation_outbreak import PersonalSituationOutbreak
+from recon.models.deportation_and_repression import DeportationAndRepression
+from recon.models.repatriation import Repatriation
+from recon.models.occupation_period import OccupationPeriod
+from recon.models.military_experience import MilitaryExperience
+from recon.models.other_military_experience import OtherMilitaryExperience
+from recon.models.sources import Source
+from recon.models.related_galleries import RelatedGallery
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class ScraperEngine:
@@ -14,6 +27,7 @@ class ScraperEngine:
         self.base_url: str | None = config.BASE_URL
         self.total_pages: int = 1
         self.data_to_scrape: List[Status] = []
+        self.records: List[Record] = []
 
     async def run(self) -> None:
         async with async_playwright() as p:
@@ -67,7 +81,7 @@ class ScraperEngine:
     async def scrape_page_content(self, page: Page, page_number: int):
         url = f"{self.base_url}/?pagenum={page_number}"
 
-        print(f"[*] Scraping page {page_number}: {url}")
+        # print(f"[*] Scraping page {page_number}: {url}")
 
         await page.goto(url, wait_until="networkidle")
         await self.extract_table_data(page)
@@ -94,6 +108,9 @@ class ScraperEngine:
                 self.data_to_scrape.append(Status(entry_id=value, url=href))
 
     async def scrape_record_page(self, page: Page, data: Status):
+        record: Record = Record()
+        record.person.external_entry_id = data.entry_id if data.entry_id else "0"
+
         if data.url:
             await page.goto(data.url, wait_until="networkidle")
 
@@ -102,190 +119,169 @@ class ScraperEngine:
             h4_count = await h4_locators.count()
             for i in range(h4_count):
                 header_text = (await h4_locators.nth(i).inner_text()).strip()
-                print(f"\n--- Section: {header_text} ---")
 
                 match header_text:
                     case constants.PERSONAL_DETAILS:
-                        table: Locator = page.locator(
-                            f"//h4[contains(text(), '{header_text}')]/following::table[position() = 1]")
-                        table_count: int = await table.count()
-
-                        if table_count > 0:
-                            rows: Locator = table.locator("tbody tr")
-                            rows_count: int = await rows.count()
-
-                            for j in range(rows_count):
-                                tds: Locator = rows.nth(j).locator("td")
-                                tds_count: int = await tds.count()
-
-                                if tds_count == 2:
-                                    label: str = (await tds.nth(0).inner_text()).strip().rstrip(':')
-                                    value: str = (await tds.nth(1).inner_text()).strip()
-
-                                    if label:
-                                        print(f"[*] {label}: {value}")
-                                elif tds_count == 3:
-                                    entry_id: str = (await tds.nth(0).inner_text()).strip()
-                                    if entry_id:
-                                        print(f"[*] Entry ID: {entry_id}")
-                                    label: str = (await tds.nth(1).inner_text()).strip().rstrip(':')
-                                    value: str = (await tds.nth(2).inner_text()).strip()
-
-                                    if label:
-                                        print(f"[*] {label}: {value}")
+                        record.person = await self._get_single_table(page, header_text, Person)
                     case constants.PERSONAL_SITUATION_OUTBREAK:
-                        table: Locator = page.locator(
-                            f"//h4[contains(text(), '{header_text}')]/following::table[position() = 1]")
-                        table_count: int = await table.count()
-
-                        if table_count > 0:
-                            rows: Locator = table.locator("tbody tr")
-                            rows_count: int = await rows.count()
-
-                            for j in range(rows_count):
-                                tds: Locator = rows.nth(j).locator("td")
-                                tds_count: int = await tds.count()
-
-                                if tds_count == 2:
-                                    label: str = (await tds.nth(0).inner_text()).strip().rstrip(':')
-                                    value: str = (await tds.nth(1).inner_text()).strip()
-
-                                    if label:
-                                        print(f"[*] {label}: {value}")
+                        record.personal_situation_outbreak = await self._get_single_table(page, header_text, PersonalSituationOutbreak)
                     case constants.DEPORTATIONS_AND_REPRESSIONS:
-                        table: Locator = page.locator(
-                            f"//h4[contains(text(), '{header_text}')]/following::table[position() <= 2]")
-                        table_count: int = await table.count()
-
-                        if table_count == 2:
-                            for t in range(table_count):
-                                column_names: Locator = table.nth(t).locator("thead tr th")
-                                column_names_count: int = await column_names.count()
-                                rows: Locator = table.nth(t).locator("tbody tr")
-                                rows_count: int = await rows.count()
-
-                                for j in range(rows_count):
-                                    tds: Locator = rows.nth(j).locator("td")
-                                    tds_count: int = await tds.count()
-
-                                    if tds_count == column_names_count:
-                                        for column_index in range(column_names_count):
-                                            label: str = await column_names.nth(column_index).inner_text()
-                                            value: str = (await tds.nth(column_index).inner_text()).strip()
-
-                                            if label:
-                                                print(f"[*] {label}: {value}")
-                                    else:
-                                        label: str = await tds.nth(0).inner_text()
-                                        value: str = await tds.nth(1).inner_text()
-                                        if label:
-                                                print(f"[*] {label}: {value}")
+                        record.deportation_and_repression = await self._get_multi_table(page, header_text, DeportationAndRepression)
                     case constants.REPATRIATION:
-                        table: Locator = page.locator(
-                            f"//h4[contains(text(), '{header_text}')]/following::table[position() = 1]")
-                        table_count: int = await table.count()
-
-                        if table_count > 0:
-                            rows: Locator = table.locator("tbody tr")
-                            rows_count: int = await rows.count()
-
-                            for j in range(rows_count):
-                                tds: Locator = rows.nth(j).locator("td")
-                                tds_count: int = await tds.count()
-
-                                if tds_count == 2:
-                                    label: str = (await tds.nth(0).inner_text()).strip().rstrip(':')
-                                    value: str = (await tds.nth(1).inner_text()).strip()
-
-                                    if label:
-                                        print(f"[*] {label}: {value}")
+                        record.repatration = await self._get_single_table(page, header_text, Repatriation)
                     case constants.OCCUPATION_PERIOD:
-                        table: Locator = page.locator(
-                            f"//h4[contains(text(), '{header_text}')]/following::table[position() = 1]")
-                        table_count: int = await table.count()
-
-                        if table_count > 0:
-                            rows: Locator = table.locator("tbody tr")
-                            rows_count: int = await rows.count()
-
-                            for j in range(rows_count):
-                                tds: Locator = rows.nth(j).locator("td")
-                                tds_count: int = await tds.count()
-
-                                if tds_count == 2:
-                                    label: str = (await tds.nth(0).inner_text()).strip().rstrip(':')
-                                    value: str = (await tds.nth(1).inner_text()).strip()
-
-                                    if label:
-                                        print(f"[*] {label}: {value}")
+                        record.occupation_period = await self._get_single_table(page, header_text, OccupationPeriod)
                     case constants.MILITARY_EXPERIENCE:
-                        table: Locator = page.locator(
-                            f"//h4[contains(text(), '{header_text}')]/following::table[position() <= 2]")
-                        table_count: int = await table.count()
-
-                        if table_count == 2:
-                            for t in range(table_count):
-                                column_names: Locator = table.nth(t).locator("thead tr th")
-                                column_names_count: int = await column_names.count()
-                                rows: Locator = table.nth(t).locator("tbody tr")
-                                rows_count: int = await rows.count()
-
-                                for j in range(rows_count):
-                                    tds: Locator = rows.nth(j).locator("td")
-                                    tds_count: int = await tds.count()
-
-                                    if tds_count == column_names_count:
-                                        for column_index in range(column_names_count):
-                                            label: str = await column_names.nth(column_index).inner_text()
-                                            value: str = (await tds.nth(column_index).inner_text()).strip()
-
-                                            if label:
-                                                print(f"[*] {label}: {value}")
-                                    else:
-                                        label: str = await tds.nth(0).inner_text()
-                                        value: str = await tds.nth(1).inner_text()
-                                        if label:
-                                                print(f"[*] {label}: {value}")
+                        record.military_experience = await self._get_multi_table(page, header_text, MilitaryExperience)
                     case constants.OTHER_MILITARY_EXPERIENCE:
-                        table: Locator = page.locator(
-                            f"//h4[contains(text(), '{header_text}')]/following::table[position() = 1]")
-                        table_count: int = await table.count()
-
-                        if table_count > 0:
-                            rows: Locator = table.locator("tbody tr")
-                            rows_count: int = await rows.count()
-
-                            for j in range(rows_count):
-                                tds: Locator = rows.nth(j).locator("td")
-                                tds_count: int = await tds.count()
-
-                                if tds_count == 2:
-                                    label: str = (await tds.nth(0).inner_text()).strip().rstrip(':')
-                                    value: str = (await tds.nth(1).inner_text()).strip()
-
-                                    if label:
-                                        print(f"[*] {label}: {value}")
+                        record.other_military_experience = await self._get_single_table(page, header_text, OtherMilitaryExperience)
                     case constants.SOURCES:
-                        li: Locator = page.locator(f"//h4[contains(text(), '{header_text}')]/following::ul[position() =1]").locator("li a")
-                        a_count: int = await li.count()
-                        
-                        for j in range(a_count):
-                            label: str = await li.nth(j).inner_text()
-                            href: str | None = await li.nth(j).get_attribute("href")
-                            
-                            print(f"[*] {label}: {href}")
+                        record.sources = await self._get_ul_li_a_href(page, header_text, Source)
                     case constants.RELATED_GALLERIES:
-                        li: Locator = page.locator(f"//h4[contains(text(), '{header_text}')]/following::ul[position() =1]").locator("li a")
-                        a_count: int = await li.count()
-                        
-                        for j in range(a_count):
-                            label: str = await li.nth(j).inner_text()
-                            href: str | None = await li.nth(j).get_attribute("href")
-                            
-                            print(f"[*] {label}: {href}")
-        except:
+                        record.related_galleries = await self._get_ul_li_a_href(page, header_text, RelatedGallery)
+        except Exception as e:
+            if config.DEBUG:
+                print(f"[@] EXCEPTION {e=}, {type(e)=}")
+
             print(f"[!] Scraping failed for {data.url}")
             data.status = "failed"
+
+    async def _get_ul_li_a_href(self, page: Page, header_text: str, model: Type[T]) -> List[T]:
+        li: Locator = page.locator(
+            f"//h4[contains(text(), '{header_text}')]/following::ul[position() =1]").locator("li a")
+        a_count: int = await li.count()
+        results: List[T] = []
+
+        for j in range(a_count):
+            label: str = await li.nth(j).inner_text()
+            href: str | None = await li.nth(j).get_attribute("href")
+
+            results.append(
+                model(
+                    summary=label,
+                    url_text=str(href),
+                    url=href
+                )
+            )
+
+        return results
+
+    async def _get_single_table(self, page: Page, header_text: str, model: Type[T]):
+        table: Locator = page.locator(
+            f"//h4[contains(text(), '{header_text}')]/following::table[position() = 1]")
+        table_count: int = await table.count()
+
+        if table_count == 0:
+            return model()
+
+        field_map: dict[str, str] = constants.MODEL_FIELD_MAP[model]
+        data: dict = {}
+
+        rows: Locator = table.locator("tbody tr")
+        rows_count: int = await rows.count()
+
+        for j in range(rows_count):
+            tds: Locator = rows.nth(j).locator("td")
+            tds_count: int = await tds.count()
+
+            if tds_count == 2:
+                label: str = (await tds.nth(0).inner_text()).strip().rstrip(':')
+                value: str = (await tds.nth(1).inner_text()).strip()
+
+                if label in field_map:
+                    field_name = field_map[label]
+                    data[field_name] = value
+            elif tds_count == 3:
+                entry_id: str = (await tds.nth(0).inner_text()).strip()
+                label: str = (await tds.nth(1).inner_text()).strip().rstrip(':')
+                value: str = (await tds.nth(2).inner_text()).strip()
+                if label in field_map:
+                    field_name = field_map[label]
+                    data[field_name] = value
+                    data["external_entry_id"] = entry_id
+
+        return model(**data)
+
+    async def _get_multi_table(self, page: Page, header_text: str, model: Type[T]):
+        table: Locator = page.locator(
+            f"//h4[contains(text(), '{header_text}')]/following::table[position() <= 2]")
+        table_count: int = await table.count()
+
+        field_map = constants.MODEL_FIELD_MAP[model]
+
+        main_data: dict = {}
+        nested_data: dict = {}
+        list_data: dict = {}
+
+        nested_cfg = field_map.get("_nested", {})
+        list_cfg = field_map.get("_list", {})
+
+        simple_map = {k: v for k, v in field_map.items()
+                      if not k.startswith("_")}
+
+        if table_count == 2:
+            for t in range(table_count):
+                column_names: Locator = table.nth(t).locator("thead tr th")
+                column_names_count: int = await column_names.count()
+                rows: Locator = table.nth(t).locator("tbody tr")
+                rows_count: int = await rows.count()
+
+                pairs: list[tuple[str, str]] = []
+                for j in range(rows_count):
+                    tds: Locator = rows.nth(j).locator("td")
+                    tds_count: int = await tds.count()
+
+                    if tds_count == column_names_count:
+                        for col in range(column_names_count):
+                            label = (await column_names.nth(col).inner_text()).strip().strip(":")
+                            value = (await tds.nth(col).inner_text()).strip()
+                            if label:
+                                pairs.append((label, value))
+                    else:
+                        label = (await tds.nth(0).inner_text()).strip().strip(":")
+                        value = (await tds.nth(1).inner_text()).strip()
+                        if label:
+                            pairs.append((label, value))
+
+                for label, value in pairs:
+                    if label in simple_map:
+                        main_data[simple_map[label]] = value
+
+                if tds_count == column_names_count:
+                    for nested_key, nested_def in nested_cfg.items():
+                        seq: list[tuple] = nested_def.get("map_sequence", [])
+                        if seq:
+                            if nested_key not in nested_data:
+                                nested_data[nested_key] = []
+                            nested_data[nested_key].append(self._map_by_sequence(
+                                pairs, seq))
+
+                    for list_key, list_def in list_cfg.items():
+                        seq: list[tuple] = list_def.get("map_sequence", [])
+                        if seq:
+                            if list_key not in list_data:
+                                list_data[list_key] = []
+                            list_data[list_key].append(
+                                self._map_by_sequence(pairs, seq))
+
+        main_data.update(nested_data)
+        main_data.update(list_data)
+        return model(**main_data)
+
+    def _map_by_sequence(self, pairs: list[tuple[str, str]], sequence: list[tuple[str, str]],) -> dict:
+        result: dict = {}
+        seq_index: int = 0
+
+        for label, value in pairs:
+            while seq_index < len(sequence):
+                expected_label, field_name = sequence[seq_index]
+                if label == expected_label:
+                    result[field_name] = value
+                    seq_index += 1
+                    break
+                seq_index += 1
+
+        return result
 
     async def get_random_delay(self):
         return uniform(config.DELAY_MIN, config.DELAY_MAX)
