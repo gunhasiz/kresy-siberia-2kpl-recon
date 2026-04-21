@@ -54,8 +54,7 @@ class ScraperEngine:
                     print(
                         f"[*] Scraping page for item {data.entry_id}: {data.url}")
                     await self.scrape_record_page(page, data)
-                
-                print(self.records)
+
             except Exception as e:
                 print(f"[!] An error occurred during scraping: {e}")
             finally:
