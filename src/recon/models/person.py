@@ -3,7 +3,7 @@ from typing import Optional
 from datetime import date
 
 class Person(BaseModel):
-    external_entry_id: str
+    external_entry_id: Optional[str] = None
     full_name: Optional[str] = None
     maiden_name: Optional[str] = None
     nickname: Optional[str] = None
