@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import date
 
 class Place(BaseModel):
@@ -26,6 +26,6 @@ class Place(BaseModel):
 
 class DeportationAndRepression(BaseModel):
     other_information: Optional[str] = None
-    place: Optional[Place] = None
+    place: List[Place] = []
 
     model_config = ConfigDict(from_attributes=True)
