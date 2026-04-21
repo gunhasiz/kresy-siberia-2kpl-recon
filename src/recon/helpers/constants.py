@@ -58,7 +58,7 @@ class PersonalSituationOutbreak:
         raise AttributeError("Constants are read-only")
 
 class DeportationAndRepression:
-    OTHER_INFORMATION = "Other information"
+    OTHER_INFORMATION = "Other Information"
     
     def __setattr__(self, key, value) -> NoReturn:
         raise AttributeError("Constants are read-only")
