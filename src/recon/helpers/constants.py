@@ -6,14 +6,13 @@ from typing import NoReturn
 
 from recon.models.person import Person as PersonModel
 from recon.models.personal_situation_outbreak import PersonalSituationOutbreak as PersonalSituationOutbreakModel
-from recon.models.deportation_and_repression import DeportationAndRepression as DeportationAndRepressionModel, Place
+from recon.models.deportation_and_repression import DeportationAndRepression as DeportationAndRepressionModel
+from recon.models.deportation_and_repression import Place as PlaceModel
 from recon.models.repatriation import Repatriation as RepatriationModel
 from recon.models.occupation_period import OccupationPeriod as OccupationPeriodModel
 from recon.models.military_experience import MilitaryExperience as MilitaryExperienceModel
+from recon.models.military_experience import MilitaryService as MilitaryServiceModel
 from recon.models.other_military_experience import OtherMilitaryExperience as OtherMilitaryExperienceModel
-from recon.models.sources import Source
-from recon.models.related_galleries import RelatedGallery
-
 
 PERSONAL_DETAILS: str = r"Personal Details"
 PERSONAL_SITUATION_OUTBREAK: str = r"Personal Situation at the outbreak of WWll"
@@ -159,7 +158,7 @@ MODEL_FIELD_MAP: dict[type, dict] = {
     DeportationAndRepression.OTHER_INFORMATION: "other_information",
         "_nested": {
             "place": {
-                "model": Place,
+                "model": PlaceModel,
                 "map_sequence": [
                     (Place.FROM_YYYY, "from_yyyy"),
                     (Place.MM,        "mm_first"),
@@ -194,7 +193,7 @@ MODEL_FIELD_MAP: dict[type, dict] = {
         MilitaryExperience.OTHER_BATTLES: "other_battles",
         "_list": {
             "military_services": {
-                "model": MilitaryService,
+                "model": MilitaryServiceModel,
                 "map_sequence": [
                     (MilitaryService.SERVED_IN,  "served_in"),
                     (MilitaryService.UNIT_NAME,  "unit_name"),
