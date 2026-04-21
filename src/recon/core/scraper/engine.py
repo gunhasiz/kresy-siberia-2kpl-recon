@@ -1,7 +1,7 @@
 import asyncio
 from random import uniform
-from re import search
-from typing import TypeVar, Type, List
+from re import Match, search
+from typing import TypeVar, Type, List, Any
 from pydantic import BaseModel
 from playwright.async_api import BrowserContext, Browser, Locator, Page, async_playwright
 
@@ -20,7 +20,6 @@ from recon.models.sources import Source
 from recon.models.related_galleries import RelatedGallery
 
 T = TypeVar("T", bound=BaseModel)
-
 
 class ScraperEngine:
     def __init__(self) -> None:
@@ -55,7 +54,10 @@ class ScraperEngine:
                     print(
                         f"[*] Scraping page for item {data.entry_id}: {data.url}")
                     await self.scrape_record_page(page, data)
-
+                
+                print(self.records)
+            except Exception as e:
+                print(f"[!] An error occurred during scraping: {e}")
             finally:
                 await browser.close()
 
@@ -78,19 +80,19 @@ class ScraperEngine:
         except Exception as e:
             print(f"[!] Could not determine total pages: {e}")
 
-    async def scrape_page_content(self, page: Page, page_number: int):
+    async def scrape_page_content(self, page: Page, page_number: int) -> None:
         url = f"{self.base_url}/?pagenum={page_number}"
 
-        # print(f"[*] Scraping page {page_number}: {url}")
+        print(f"[*] Scraping page {page_number}: {url}")
 
         await page.goto(url, wait_until="networkidle")
         await self.extract_table_data(page)
 
-        delay: float = await self.get_random_delay()
+        delay: float = await self._get_random_delay()
 
         await asyncio.sleep(delay)
 
-    async def extract_table_data(self, page: Page):
+    async def extract_table_data(self, page: Page) -> None:
         await page.wait_for_selector("div[id^='gv-view-']", state="attached", timeout=30000)
 
         data_rows: Locator = page.locator("div[id^='gv_diy']")
@@ -99,26 +101,26 @@ class ScraperEngine:
         print(f"[*] Found {count} data rows on the page.")
 
         for i in range(count):
-            print(f"[*] Scraping row {i}")
+            # print(f"[*] Scraping row {i}")
 
             href: str | None = await data_rows.nth(i).locator("div").locator("a").get_attribute("href")
-            value: str = search(r"(?<=\/entry\/)\d+", str(href)).group(0)
+            match: Match[str] | None = search(r"(?<=\/entry\/)\d+", str(href))
+            value: str = match.group(0) if match else ""
 
             if href:
                 self.data_to_scrape.append(Status(entry_id=value, url=href))
 
-    async def scrape_record_page(self, page: Page, data: Status):
+    async def scrape_record_page(self, page: Page, data: Status) -> None:
         record: Record = Record()
-        record.person.external_entry_id = data.entry_id if data.entry_id else "0"
 
         if data.url:
             await page.goto(data.url, wait_until="networkidle")
 
         try:
-            h4_locators = page.locator("div[id^='gv_diy'] h4")
-            h4_count = await h4_locators.count()
+            h4_locators: Locator = page.locator("div[id^='gv_diy'] h4")
+            h4_count: int = await h4_locators.count()
             for i in range(h4_count):
-                header_text = (await h4_locators.nth(i).inner_text()).strip()
+                header_text: str = (await h4_locators.nth(i).inner_text()).strip()
 
                 match header_text:
                     case constants.PERSONAL_DETAILS:
@@ -139,6 +141,10 @@ class ScraperEngine:
                         record.sources = await self._get_ul_li_a_href(page, header_text, Source)
                     case constants.RELATED_GALLERIES:
                         record.related_galleries = await self._get_ul_li_a_href(page, header_text, RelatedGallery)
+
+            data.status = "success"
+            record.person.external_entry_id = data.entry_id if data.entry_id else "N/A"
+            self.records.append(record)
         except Exception as e:
             if config.DEBUG:
                 print(f"[@] EXCEPTION {e=}, {type(e)=}")
@@ -166,7 +172,7 @@ class ScraperEngine:
 
         return results
 
-    async def _get_single_table(self, page: Page, header_text: str, model: Type[T]):
+    async def _get_single_table(self, page: Page, header_text: str, model: Type[T]) -> T:
         table: Locator = page.locator(
             f"//h4[contains(text(), '{header_text}')]/following::table[position() = 1]")
         table_count: int = await table.count()
@@ -189,35 +195,32 @@ class ScraperEngine:
                 value: str = (await tds.nth(1).inner_text()).strip()
 
                 if label in field_map:
-                    field_name = field_map[label]
+                    field_name: str = field_map[label]
                     data[field_name] = value
             elif tds_count == 3:
-                entry_id: str = (await tds.nth(0).inner_text()).strip()
                 label: str = (await tds.nth(1).inner_text()).strip().rstrip(':')
                 value: str = (await tds.nth(2).inner_text()).strip()
                 if label in field_map:
-                    field_name = field_map[label]
+                    field_name: str = field_map[label]
                     data[field_name] = value
-                    data["external_entry_id"] = entry_id
 
         return model(**data)
 
-    async def _get_multi_table(self, page: Page, header_text: str, model: Type[T]):
+    async def _get_multi_table(self, page: Page, header_text: str, model: Type[T]) -> T:
         table: Locator = page.locator(
-            f"//h4[contains(text(), '{header_text}')]/following::table[position() <= 2]")
+            f"//h4[contains(text(), '{header_text}')]/following::table[position() <= 2 and not(preceding::h4[1][not(contains(text(), '{header_text}'))])]")
         table_count: int = await table.count()
 
-        field_map = constants.MODEL_FIELD_MAP[model]
+        field_map: dict = constants.MODEL_FIELD_MAP[model]
 
         main_data: dict = {}
         nested_data: dict = {}
         list_data: dict = {}
 
-        nested_cfg = field_map.get("_nested", {})
-        list_cfg = field_map.get("_list", {})
+        nested_cfg: dict = field_map.get("_nested", {})
+        list_cfg: dict = field_map.get("_list", {})
 
-        simple_map = {k: v for k, v in field_map.items()
-                      if not k.startswith("_")}
+        simple_map: dict = {k: v for k, v in field_map.items() if not k.startswith("_")}
 
         if table_count == 2:
             for t in range(table_count):
@@ -233,13 +236,13 @@ class ScraperEngine:
 
                     if tds_count == column_names_count:
                         for col in range(column_names_count):
-                            label = (await column_names.nth(col).inner_text()).strip().strip(":")
-                            value = (await tds.nth(col).inner_text()).strip()
+                            label: str = (await column_names.nth(col).inner_text()).strip().strip(":")
+                            value: str = (await tds.nth(col).inner_text()).strip()
                             if label:
                                 pairs.append((label, value))
                     else:
-                        label = (await tds.nth(0).inner_text()).strip().strip(":")
-                        value = (await tds.nth(1).inner_text()).strip()
+                        label: str = (await tds.nth(0).inner_text()).strip().strip(":")
+                        value: str = (await tds.nth(1).inner_text()).strip()
                         if label:
                             pairs.append((label, value))
 
@@ -283,10 +286,9 @@ class ScraperEngine:
 
         return result
 
-    async def get_random_delay(self):
+    async def _get_random_delay(self) -> float:
         return uniform(config.DELAY_MIN, config.DELAY_MAX)
 
-
-async def main():
+async def main() -> None:
     engine = ScraperEngine()
     await engine.run()
