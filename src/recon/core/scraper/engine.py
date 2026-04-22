@@ -44,7 +44,7 @@ class ScraperEngine:
                 await self.get_total_pages(page)
 
                 # TODO: Remove hardcoded page limit after testing
-                for page_num in range(1, 1+1):  # self.total_pages + 1):
+                for page_num in range(1, 11):#, self.total_pages + 1):
                     await self.scrape_page_content(page, page_num)
 
                 print(
@@ -99,6 +99,7 @@ class ScraperEngine:
 
         print(f"[*] Found {count} data rows on the page.")
 
+        # TODO: Remove hardcoded page limit after testing
         for i in range(count):
             # print(f"[*] Scraping row {i}")
 
