@@ -1,6 +1,5 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
-from datetime import date
 
 class Repatriation(BaseModel):
     return_date: Optional[str] = None
