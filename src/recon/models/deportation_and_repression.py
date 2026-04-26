@@ -26,6 +26,6 @@ class Place(BaseModel):
 
 class DeportationAndRepression(BaseModel):
     other_information: Optional[str] = None
-    place: List[Place] = []
+    places: List[Place] = []
 
     model_config = ConfigDict(from_attributes=True)
