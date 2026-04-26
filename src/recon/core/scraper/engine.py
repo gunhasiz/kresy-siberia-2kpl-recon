@@ -1,7 +1,8 @@
 import asyncio
 from random import uniform
 from re import Match, search
-from typing import TypeVar, Type, List
+from typing import Any, TypeVar, Type, List
+from types import CoroutineType
 from pydantic import BaseModel
 from playwright.async_api import BrowserContext, Browser, Locator, Page, async_playwright
 
@@ -29,6 +30,7 @@ class ScraperEngine:
         self.data_to_scrape: List[Status] = []
         self.records: List[Record] = []
         self.api_client: ReconAPIClient = ReconAPIClient()
+        self.semaphore = asyncio.Semaphore(config.CONCURRENT_REQUESTS)
 
     async def run(self) -> None:
         async with async_playwright() as p:
@@ -38,28 +40,43 @@ class ScraperEngine:
             print(f"[*] Browser launched successfully.")
             print(f"[*] Running browser context....")
             context: BrowserContext = await browser.new_context(user_agent=config.USER_AGENT)
-            page: Page = await context.new_page()
+            main_page: Page = await context.new_page()
 
             try:
                 first_url: str = f"{self.base_url}/?pagenum=1"
-                await page.goto(first_url, wait_until="networkidle")
-                await self.get_total_pages(page)
+                await main_page.goto(first_url, wait_until="networkidle")
+                await self.get_total_pages(main_page)
 
                 for page_num in range(1, self.total_pages + 1):
-                    await self.scrape_page_content(page, page_num)
+                    await self.scrape_page_content(main_page, page_num)
 
                 print(
                     f"[*] Outer scraping complete. Total items collected: {len(self.data_to_scrape)}")
+                
+                await main_page.close()
+                
+                print(f"[*] Starting record scraping...")
+                
+                tasks: List[CoroutineType[Any, Any, None]] = [
+                    self._scrape_record(context, data)
+                    for data in self.data_to_scrape
+                ]
 
-                for data in self.data_to_scrape:
-                    print(
-                        f"[*] Scraping page for item {data.entry_id}: {data.url}")
-                    await self.scrape_record_page(page, data)
+                await asyncio.gather(*tasks)
 
             except Exception as e:
                 print(f"[!] An error occurred during scraping: {e}")
             finally:
                 await browser.close()
+    
+    async def _scrape_record(self, context: BrowserContext, data: Status):
+        async with self.semaphore:
+            page: Page = await context.new_page()
+            try:
+                print(f"[*] Scraping page for item {data.entry_id}: {data.url}")
+                await self.scrape_record_page(page, data)
+            finally:
+                await page.close()
 
     async def get_total_pages(self, page: Page) -> None:
         try:
@@ -81,7 +98,7 @@ class ScraperEngine:
             print(f"[!] Could not determine total pages: {e}")
 
     async def scrape_page_content(self, page: Page, page_number: int) -> None:
-        url = f"{self.base_url}/?pagenum={page_number}"
+        url = f"{self.base_url}&pagenum={page_number}"
 
         print(f"[*] Scraping page {page_number}: {url}")
 
@@ -110,7 +127,7 @@ class ScraperEngine:
             if href:
                 status: Status = Status(entry_id=value, url=href)
                 self.data_to_scrape.append(status)
-                self.api_client.send_status(status)
+                await self.api_client.send_status(status)
 
     async def scrape_record_page(self, page: Page, data: Status) -> None:
         record: Record = Record()
@@ -147,15 +164,17 @@ class ScraperEngine:
             data.status = "success"
             record.person.external_entry_id = data.entry_id if data.entry_id else "N/A"
             self.records.append(record)
-            result = self.api_client.send_record(record)
+            result: dict[str, Any] | None = await self.api_client.send_record(record)
+
             if result:
-                self.api_client.send_status(data)
+                await self.api_client.send_status(data)
         except Exception as e:
             if config.DEBUG:
                 print(f"[@] EXCEPTION {e=}, {type(e)=}")
 
             print(f"[!] Scraping failed for {data.url}")
             data.status = "failed"
+            await self.api_client.send_status(data)
 
     async def _get_ul_li_a_href(self, page: Page, header_text: str, model: Type[T]) -> List[T]:
         li: Locator = page.locator(

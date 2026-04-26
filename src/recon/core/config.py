@@ -16,5 +16,6 @@ class Config:
     DELAY_MAX: float = float(getenv("DELAY_MAX", 3.0))
     
     API_URL: Optional[str] = getenv("API_URL")
+    CONCURRENT_REQUESTS: int = int(getenv("CONCURRENT_REQUESTS", 5))
 
 config = Config()
