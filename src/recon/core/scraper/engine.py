@@ -1,11 +1,12 @@
 import asyncio
 from random import uniform
 from re import Match, search
-from typing import TypeVar, Type, List, Any
+from typing import TypeVar, Type, List
 from pydantic import BaseModel
 from playwright.async_api import BrowserContext, Browser, Locator, Page, async_playwright
 
 import recon.helpers.constants as constants
+from recon.utils.api_client import ReconAPIClient
 from recon.core.config import config
 from recon.models.status import Status
 from recon.models.record import Record
@@ -27,6 +28,7 @@ class ScraperEngine:
         self.total_pages: int = 1
         self.data_to_scrape: List[Status] = []
         self.records: List[Record] = []
+        self.api_client: ReconAPIClient = ReconAPIClient()
 
     async def run(self) -> None:
         async with async_playwright() as p:
@@ -43,8 +45,7 @@ class ScraperEngine:
                 await page.goto(first_url, wait_until="networkidle")
                 await self.get_total_pages(page)
 
-                # TODO: Remove hardcoded page limit after testing
-                for page_num in range(1, 11):#, self.total_pages + 1):
+                for page_num in range(1, self.total_pages + 1):
                     await self.scrape_page_content(page, page_num)
 
                 print(
@@ -99,7 +100,6 @@ class ScraperEngine:
 
         print(f"[*] Found {count} data rows on the page.")
 
-        # TODO: Remove hardcoded page limit after testing
         for i in range(count):
             # print(f"[*] Scraping row {i}")
 
@@ -108,7 +108,9 @@ class ScraperEngine:
             value: str = match.group(0) if match else ""
 
             if href:
-                self.data_to_scrape.append(Status(entry_id=value, url=href))
+                status: Status = Status(entry_id=value, url=href)
+                self.data_to_scrape.append(status)
+                self.api_client.send_status(status)
 
     async def scrape_record_page(self, page: Page, data: Status) -> None:
         record: Record = Record()
@@ -145,6 +147,9 @@ class ScraperEngine:
             data.status = "success"
             record.person.external_entry_id = data.entry_id if data.entry_id else "N/A"
             self.records.append(record)
+            result = self.api_client.send_record(record)
+            if result:
+                self.api_client.send_status(data)
         except Exception as e:
             if config.DEBUG:
                 print(f"[@] EXCEPTION {e=}, {type(e)=}")
