@@ -157,7 +157,7 @@ MODEL_FIELD_MAP: dict[type, dict] = {
     DeportationAndRepressionModel: {
     DeportationAndRepression.OTHER_INFORMATION: "other_information",
         "_nested": {
-            "place": {
+            "places": {
                 "model": PlaceModel,
                 "map_sequence": [
                     (Place.FROM_YYYY, "from_yyyy"),
