@@ -14,5 +14,7 @@ class Config:
     USER_AGENT: Optional[str] = getenv("USER_AGENT")
     DELAY_MIN: float = float(getenv("DELAY_MIN", 1.0))
     DELAY_MAX: float = float(getenv("DELAY_MAX", 3.0))
+    
+    API_URL: Optional[str] = getenv("API_URL")
 
 config = Config()
