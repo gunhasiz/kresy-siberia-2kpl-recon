@@ -5,6 +5,7 @@ from typing import Any, TypeVar, Type, List
 from types import CoroutineType
 from pydantic import BaseModel
 from playwright.async_api import BrowserContext, Browser, Locator, Page, async_playwright
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError, Error as PlaywrightError
 
 import recon.helpers.constants as constants
 from recon.utils.api_client import ReconAPIClient
@@ -33,6 +34,9 @@ class ScraperEngine:
         self.semaphore = asyncio.Semaphore(config.CONCURRENT_REQUESTS)
 
     async def run(self) -> None:
+        print("[*] Checking database for pending or failed tasks...")
+        self.data_to_scrape = await self.api_client.get_queue(flags=["pending", "failed"])
+        
         async with async_playwright() as p:
             print(
                 f"[*] Setting up browser with user agent: {config.USER_AGENT}")
@@ -40,29 +44,34 @@ class ScraperEngine:
             print(f"[*] Browser launched successfully.")
             print(f"[*] Running browser context....")
             context: BrowserContext = await browser.new_context(user_agent=config.USER_AGENT)
-            main_page: Page = await context.new_page()
+            
 
             try:
-                first_url: str = f"{self.base_url}/?pagenum=1"
-                await main_page.goto(first_url, wait_until="networkidle")
-                await self.get_total_pages(main_page)
+                if not self.data_to_scrape:
+                    print("[*] Queue is empty. Starting pagination scraping to find new records...")
+                    
+                    main_page: Page = await context.new_page()
+                    first_url: str = f"{self.base_url}&pagenum=1"
+                    await main_page.goto(first_url, wait_until="domcontentloaded", timeout=45000)
+                    await self.get_total_pages(main_page)
 
-                for page_num in range(1, self.total_pages + 1):
-                    await self.scrape_page_content(main_page, page_num)
+                    for page_num in range(1, self.total_pages + 1):
+                        await self.scrape_page_content(main_page, page_num)
 
-                print(
-                    f"[*] Outer scraping complete. Total items collected: {len(self.data_to_scrape)}")
+                    print(f"[*] Outer scraping complete. Total items collected: {len(self.data_to_scrape)}")
                 
-                await main_page.close()
+                    await main_page.close()
+                    self.data_to_scrape = await self.api_client.get_queue(flags=["pending"])
                 
-                print(f"[*] Starting record scraping...")
+                if self.data_to_scrape:
+                    print(f"[*] Starting record scraping...")
                 
-                tasks: List[CoroutineType[Any, Any, None]] = [
-                    self._scrape_record(context, data)
-                    for data in self.data_to_scrape
-                ]
+                    tasks: List[CoroutineType[Any, Any, None]] = [
+                        self._scrape_record(context, data)
+                        for data in self.data_to_scrape
+                    ]
 
-                await asyncio.gather(*tasks)
+                    await asyncio.gather(*tasks)
 
             except Exception as e:
                 print(f"[!] An error occurred during scraping: {e}")
@@ -102,7 +111,7 @@ class ScraperEngine:
 
         print(f"[*] Scraping page {page_number}: {url}")
 
-        await page.goto(url, wait_until="networkidle")
+        await page.goto(url, wait_until="domcontentloaded", timeout=45000)
         await self.extract_table_data(page)
 
         delay: float = await self._get_random_delay()
@@ -132,10 +141,10 @@ class ScraperEngine:
     async def scrape_record_page(self, page: Page, data: Status) -> None:
         record: Record = Record()
 
-        if data.url:
-            await page.goto(data.url, wait_until="networkidle")
-
         try:
+            if data.url:
+                await page.goto(data.url, wait_until="domcontentloaded", timeout=45000)
+
             h4_locators: Locator = page.locator("div[id^='gv_diy'] h4")
             h4_count: int = await h4_locators.count()
             for i in range(h4_count):
