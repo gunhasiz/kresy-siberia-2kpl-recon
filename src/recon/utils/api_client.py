@@ -1,5 +1,5 @@
 import httpx
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from recon.core.config import config
 from recon.models.record import Record
@@ -36,6 +36,22 @@ class ReconAPIClient:
         except Exception as e:
             print(f"[!] An unexpected error occurred: {e}")
             return None
+
+    async def get_queue(self, flags: List[str] = ["pending", "failed"]) -> List[Status]:
+        endpoint = f"{self.base_url}/status/"
+        
+        try:
+            response = await self.client.get(endpoint, params={"flags": flags})
+            response.raise_for_status()
+            
+            data = response.json()
+            print(f"[*] Retrieved {len(data)} tasks from queue.")
+            
+            return [Status(**item) for item in data]
+            
+        except httpx.HTTPError as e:
+            print(f"[!] Error fetching queue from API: {e}")
+            return []
 
     async def send_record(self, record: Record) -> Dict[str, Any] | None:
         endpoint: str = f"{self.base_url}/records/"
